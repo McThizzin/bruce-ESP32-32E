@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Legacy reference, ported from the old ESP32-32E fork.** Wiring shown matches
+> the board flags (`CC1101_GDO0=22`, `SS=27`, NRF24/W5500 share SPI). Peripheral
+> behavior is **unverified** on this port (no module present during testing). See
+> [`docs/esp32-32e-verification.md`](docs/esp32-32e-verification.md).
+
 # CC1101 / NRF24 Module Wiring for ESP32-32E
 
 ## 📡 Pin Configuration

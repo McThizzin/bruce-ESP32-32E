@@ -14,9 +14,10 @@ Base: current upstream `BruceDevices/firmware` (`a59213f3`) + ported `boards/ESP
 | 2 | First boot: screen colors correct (not inverted), backlight on, XPT2046 touch responds without calibration hang | **PASS** |
 | 3 | SD card inserted, reboot: SD mounts, Files menu works, web-UI upload writes to SD | **PASS** |
 | 4 | Boot + reset buttons | **PASS** |
-| 4 | Audio / IR / GPS / battery | **NOT TESTED** — not present on this unit |
+| 5 | Audio / IR / GPS / battery | **NOT TESTED** — not present on this unit |
 
 ## Notes
 - No partition change was needed (`custom_4Mb_full.csv` app = 0x3C0000; ~9% free), so the planned `custom_4Mb_maxapp.csv` contingency was not created.
-- Board files adapted to Arduino-ESP32 core 3.x: LEDC keyed by pin, `bruceConfigPins.rotation`, and IR TX default `-DTXLED=4` (upstream default would be `GROVE_SDA=27`, colliding with CC1101 SS).
-- IR RX still defaults to `RXLED = GROVE_SCL = 4`; unverified against hardware.
+- Board files adapted to Arduino-ESP32 core 3.x: LEDC keyed by pin, `bruceConfigPins.rotation`; battery macro corrected to `-DANALOG_BAT_PIN=34` (old `-DBAT_PIN` is dead upstream).
+- IR defaults: `-DTXLED=4` (upstream would fall back to `GROVE_SDA=27`, colliding with CC1101 SS) and `-DRXLED=35` (input-only, receiver-capable); the `*_TX_PINS` option lists now exclude input-only GPIO35. IR remains **unverified** against hardware.
+- Color inversion is now selected by build env: `ESP32-32E` (OFF) vs `ESP32-32E-INV` (`-DTFT_INVERSION_ON`).

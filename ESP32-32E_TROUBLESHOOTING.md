@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Legacy reference, ported from the old ESP32-32E fork.** Some symptoms/patches
+> target that fork, not the current upstream base. For color inversion, use the
+> `ESP32-32E-INV` env, not manual edits. Current status is in
+> [`docs/esp32-32e-verification.md`](docs/esp32-32e-verification.md).
+
 # ESP32-32E Troubleshooting Guide
 
 ## Current Issue: Purple Boot Screen → White Screen Crash

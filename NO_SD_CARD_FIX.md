@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **Legacy reference, ported from the old ESP32-32E fork.** Some claims describe
+> that fork's patches, which were **not** carried into this port (notably the SD
+> safety patch: current upstream already boots without an SD card and falls back to
+> LittleFS — verified). Current status is in
+> [`docs/esp32-32e-verification.md`](docs/esp32-32e-verification.md). References to
+> `QUICK_START.md` / `esp32e-docs/` point at files that were not ported.
+
 # ✅ Fixed: Boot Crash Without SD Card
 
 ## The Problem

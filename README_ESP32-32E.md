@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **Legacy reference, ported from the old ESP32-32E fork.** Some claims here
+> describe that fork and are not true of this port (RGB LED and audio DAC are
+> disabled in the 4 MB build; the SD-card patch was not ported — upstream already
+> handles no-SD boot). Current status is in
+> [`docs/esp32-32e-verification.md`](docs/esp32-32e-verification.md). Links to
+> `QUICK_START.md` / `esp32e-docs/` are not part of this repo.
+
 # ESP32-32E (Elegoo CYD) Support for Bruce Firmware
 
 Complete hardware support for the **Elegoo 2.8" ESP32-32E Display Module** in the Bruce firmware.

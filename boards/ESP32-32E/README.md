@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Ported from the old ESP32-32E fork.** Peripheral behavior is unverified;
+> current, measured status is in
+> [`docs/esp32-32e-verification.md`](../../docs/esp32-32e-verification.md).
+
 # ESP32-32E Board Support
 
 ## Quick Reference
@@ -97,5 +102,5 @@ pio run -e ESP32-32E -t clean
 ### Support
 For issues specific to ESP32-32E hardware, refer to:
 - [ESP32-32E Setup Guide](../../ESP32-32E_SETUP_GUIDE.md)
-- [Elegoo Documentation](../../esp32e-docs/)
+- Elegoo documentation: vendor tree not ported (reference copy lives in the old fork's `esp32e-docs/`)
 - [Bruce Firmware Issues](https://github.com/pr3y/Bruce/issues)

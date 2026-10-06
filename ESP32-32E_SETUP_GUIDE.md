@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Legacy reference, ported from the old ESP32-32E fork.** Build/flash details may
+> predate the current pioarduino/Arduino-ESP32 3.x base. Current, verified status is
+> in [`docs/esp32-32e-verification.md`](docs/esp32-32e-verification.md).
+
 # ESP32-32E (Elegoo CYD) Board Support for Bruce
 
 ## Overview

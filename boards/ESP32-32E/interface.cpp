@@ -105,10 +105,20 @@ void _post_setup_gpio() {
     ledcBrightnessInitialized = true;
     Serial.println("LEDC initialized successfully");
     
-    // ESP32-32E needs colorInverted=0 (purple text on black was correct)
+    // Color inversion is panel-specific. The default ESP32-32E panel needs
+    // inversion OFF (colorInverted=0; purple text on black was correct), while
+    // the ESP32-32E-INV diagnostic variant is built with -DTFT_INVERSION_ON and
+    // therefore needs inversion ON. main.cpp re-applies bruceConfig.colorInverted,
+    // so both the runtime flag and invertDisplay() must agree here.
+#ifdef TFT_INVERSION_ON
+    bruceConfig.colorInverted = 1;
+    tft.invertDisplay(1);
+    Serial.println("Color inversion set to 1 (TFT_INVERSION_ON)");
+#else
     bruceConfig.colorInverted = 0;
     tft.invertDisplay(0);
     Serial.println("Color inversion set to 0 for ESP32-32E");
+#endif
 }
 
 /*********************************************************************
