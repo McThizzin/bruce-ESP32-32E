@@ -4,11 +4,11 @@
 
 **Goal:** Create a new repo forked from the current official `BruceDevices/firmware` and re-implement ESP32-32E (Waveshare 2.8" ILI9341 / Elegoo CYD-style) build support on top of it, replacing the ~11-month-old fork `g1l34t20n/bruceesp32e`.
 
-**Architecture:** Do not merge or rebase the old fork's 30 commits (881 upstream commits would conflict in exactly the files we touched). Instead start a branch from current upstream and port the small board-support footprint: `boards/ESP32-32E/` (auto-registered via `extra_configs = boards/*/*.ini`), tiny `platformio.ini` edits, optional test sketches and docs, and the `esp32e-docs/` vendor tree (kept by user decision). Every old local bug-fix is re-evaluated against current upstream code rather than copied.
+**Architecture:** Do not merge or rebase the old fork's 30 commits (881 upstream commits would conflict in exactly the files we touched). Instead start a branch from current upstream and port the small board-support footprint: `boards/ESP32-32E/` (auto-registered via `extra_configs = boards/*/*.ini`), tiny `platformio.ini` edits, optional test sketches and small docs. The `esp32e-docs/` vendor tree is deliberately NOT ported (reversed by user decision — see Task 4). Every old local bug-fix is re-evaluated against current upstream code rather than copied.
 
 **Tech Stack:** PlatformIO (pioarduino platform-espressif32 55.03.39), Arduino framework 3.3.x, TFT_eSPI (ILI9341_2_DRIVER via HSPI), XPT2046 resistive touch (`lib/CYD-touch`, already upstream), FastLED ^3.10.x, sd_files on LittleFS/SD.
 
-**Spec:** This document's §0 (Findings & Decisions) is the spec — it records the analysis, the user's three decisions (new repo from `BruceDevices/firmware`, keep `esp32e-docs` committed, execute in a fresh session), and the exact port footprint.
+**Spec:** This document's §0 (Findings & Decisions) is the spec — it records the analysis, the user's decisions (new repo from `BruceDevices/firmware`, **exclude** the `esp32e-docs/` vendor tree — decision reversed mid-execution, execute in a fresh session), and the exact port footprint.
 
 ---
 
@@ -35,7 +35,7 @@ Port footprint (only these, everything else came from upstream):
 | `platformio.ini` | 3 small edits (see Task 3) |
 | `test/ESP32-32E_minimal_test.ino`, `test/CC1101_hardware_test.ino` | Standalone hardware tests; optional to port |
 | `custom_4Mb_maxapp.csv` | Contingency partition (untracked in old fork; only if flash overflows — see Task 6) |
-| `esp32e-docs/` | ~120 MB Waveshare vendor tree (demos/PDFs/tools). **User decided: keep committed** |
+| `esp32e-docs/` | Waveshare vendor tree (demos/PDFs/tools), 436 MB committed / 3,006 files on disk. **User decision (reversed): do NOT commit** — remains in `../bruceesp32e/esp32e-docs` for reference |
 | Root docs asked about earlier | `sd_files/` is a stock upstream folder — **do not port** (already upstream) |
 
 **Deliberately NOT ported** (verified against current upstream):
@@ -219,35 +219,35 @@ git commit -m "chore: default to ESP32-32E env; document diagnostic test envs"
 
 ---
 
-### Task 4: Port Docs and `esp32e-docs/` (User Decision: Keep Committed)
+### Task 4: Port ESP32-32E Reference Docs (vendor tree NOT committed)
 
 **Files:**
-- Create: `esp32e-docs/` (copied verbatim), optional root docs from the old fork
-- Modify: README (optional)
+- Create: ESP32-32E-specific root docs from the old fork — only what is still true for current firmware
+- Do NOT create: `esp32e-docs/` — excluded by user decision (436 MB / 3,006 files); it stays in the sibling old repo `../bruceesp32e/esp32e-docs` for reference
+- Modify: README — none; upstream README stays untouched
 
 **Interfaces:**
-- Produces: the vendor tree present in the new repo, as the user requested.
+- Produces: small, device-specific reference docs in the new repo; no large binary tree.
 
-- [ ] **Step 1: Copy the vendor tree verbatim from the old fork**
+- [x] **Step 1: (Superseded) Vendor tree deliberately NOT copied**
+
+The earlier decision to keep `esp32e-docs/` committed was reversed. The tree is 436 MB / 3,006 files and adds no build value. It remains available for reference at `../bruceesp32e/esp32e-docs`. Nothing under `esp32e-docs/` is added to git.
+
+- [x] **Step 2: Port the small user-facing docs**
+
+Copied from `../bruceesp32e`:
+`NO_SD_CARD_FIX.md`, `CC1101_WIRING_ESP32-32E.md`, `ESP32-32E_SETUP_GUIDE.md`, `ESP32-32E_TROUBLESHOOTING.md`, `README_ESP32-32E.md`.
+These are the fork's own markdown docs, not the vendor tree. Revisit any stale workaround claims before relying on them.
+
+- [x] **Step 3: Confirm nothing unintended is staged**
+
+`git status --short` lists only the five markdown files as new; no `esp32e-docs/` entries.
+
+- [x] **Step 4: Commit**
 
 ```bash
-git -C ../bruceesp32e archive HEAD esp32e-docs | tar -x -C .
-du -sh esp32e-docs        # expect ~120 MB
-```
-
-- [ ] **Step 2: (Optional) port user-facing docs**
-
-Copy from `../bruceesp32e`: `NO_SD_CARD_FIX.md`, and the ESP32-32E-specific README passages — only what is still true for current firmware (no stale workaround claims). Keep this to a single doc section; the upstream README should otherwise stay untouched.
-
-- [ ] **Step 3: Add `.gitignore` guard against the `_boards_json`-style junk if any**
-
-Not required for this tree, but confirm `git status --short` lists exactly the files you intend to add before committing.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add esp32e-docs/ NO_SD_CARD_FIX.md 2>/dev/null
-git commit -m "docs: add ESP32-32E vendor reference tree (Waveshare ESP32-32E)"
+git add NO_SD_CARD_FIX.md CC1101_WIRING_ESP32-32E.md ESP32-32E_SETUP_GUIDE.md ESP32-32E_TROUBLESHOOTING.md README_ESP32-32E.md
+git commit -m "docs: add ESP32-32E reference docs (vendor tree not committed)"
 ```
 
 ---
@@ -410,7 +410,7 @@ Include: build size, on-device results from Task 7, and the fact that the old fo
 
 ## Self-Review Notes (run at plan time, kept for executor awareness)
 
-- **Spec coverage:** §0 decisions → Tasks 1–8 (new repo ✓, keep esp32e-docs ✓ Task 4, fresh session ✓ this file is the handoff).
+- **Spec coverage:** §0 decisions → Tasks 1–8 (new repo ✓, exclude `esp32e-docs/` ✓ Task 4, fresh session ✓ this file is the handoff).
 - **Step scan:** every step is one checkable action; values pinned (flashes, pins, file names, partition layout). No free-form "fix whatever" steps.
 - **Type/name consistency:** env `ESP32-32E` everywhere; partition file `custom_4Mb_maxapp.csv`; branch `esp32-32e-port`; official repo `BruceDevices/firmware` used consistently.
 - **Review Focus:** five failure modes each own their check (Task 5 size check, Task 5 landmine note, Task 7 checks 2–3, Task 6 step 3).
