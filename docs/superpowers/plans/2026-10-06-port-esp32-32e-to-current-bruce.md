@@ -281,7 +281,7 @@ pio run -e ESP32-32E 2>&1 | grep -E "RAM:|Flash:"          # print-memory-usage 
 ls -l .pio/build/ESP32-32E/firmware.bin
 ```
 
-Expected: Flash: used ≤ 3,735,552 B − margin (≥ 5% free). If over → Task 6.
+Expected: app image ≤ the `factory` partition from `custom_4Mb_full.csv`. **Actual: `factory` = 0x3C0000 = 3,932,160 B** (the earlier 3,735,552 B figure was the old fork's CSV; current upstream gives more room). Result 2026-10-06: `firmware.bin` = 3,577,632 B → ~9.0% free, within the ≥5% target. If over → Task 6.
 
 - [ ] **Step 4: Re-verify a foreign env still lists (do not build it)**
 
@@ -300,7 +300,7 @@ git commit -m "fix: ESP32-32E build on current upstream (rebuild/triage pass)"
 
 ---
 
-### Task 6: Flash-Space Contingency (only if Task 5 Step 3 overflowed)
+### Task 6: Flash-Space Contingency — **NOT REQUIRED** (Task 5 fit with ~9% free; kept for reference if a future feature overflows)
 
 **Files:**
 - Create: `custom_4Mb_maxapp.csv` if needed

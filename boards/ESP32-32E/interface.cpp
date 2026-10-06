@@ -97,10 +97,11 @@ void _post_setup_gpio() {
 #endif
 
     // Brightness control - initialize LEDC for PWM
+    // Arduino-ESP32 core 3.x: LEDC is keyed by pin (ledcAttach/ledcWrite), not channel
     Serial.println("Initializing LEDC for backlight PWM...");
-    ledcSetup(TFT_BRIGHT_CHANNEL, TFT_BRIGHT_FREQ, TFT_BRIGHT_Bits); // Channel 0, 5khz, 8bits
-    ledcAttachPin(TFT_BL, TFT_BRIGHT_CHANNEL);
-    ledcWrite(TFT_BRIGHT_CHANNEL, 255);
+    pinMode(TFT_BL, OUTPUT);
+    ledcAttach(TFT_BL, TFT_BRIGHT_FREQ, TFT_BRIGHT_Bits);
+    ledcWrite(TFT_BL, 255);
     ledcBrightnessInitialized = true;
     Serial.println("LEDC initialized successfully");
     
@@ -128,7 +129,7 @@ void _setBrightness(uint8_t brightval) {
     
     // Only use LEDC if it's been initialized, otherwise use digitalWrite
     if (ledcBrightnessInitialized) {
-        ledcWrite(TFT_BRIGHT_CHANNEL, dutyCycle); // Channel 0
+        ledcWrite(TFT_BL, dutyCycle);
     } else {
         // Before LEDC init, just turn backlight on/off with digitalWrite
         digitalWrite(TFT_BL, dutyCycle > 0 ? HIGH : LOW);
@@ -166,16 +167,16 @@ void InputHandler(void) {
             auto t = touch.getPointScaled();
 #endif
             // Serial.printf("\nRAW: Touch Pressed on x=%d, y=%d",t.x, t.y);
-            if (bruceConfig.rotation == 3) {
+            if (bruceConfigPins.rotation == 3) {
                 t.y = (tftHeight + 20) - t.y;
                 t.x = tftWidth - t.x;
             }
-            if (bruceConfig.rotation == 0) {
+            if (bruceConfigPins.rotation == 0) {
                 int tmp = t.x;
                 t.x = tftWidth - t.y;
                 t.y = tmp;
             }
-            if (bruceConfig.rotation == 2) {
+            if (bruceConfigPins.rotation == 2) {
                 int tmp = t.x;
                 t.x = t.y;
                 t.y = (tftHeight + 20) - tmp;
