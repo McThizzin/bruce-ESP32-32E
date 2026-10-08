@@ -46,7 +46,7 @@ See: **[NO_SD_CARD_FIX.md](NO_SD_CARD_FIX.md)** for details.
 ## 🔧 Hardware Specifications
 
 ### **Display**
-- **Driver:** ILI9341 (240x320 pixels)
+- **Driver:** ILI9341/ST7789 (240x320 pixels)
 - **Interface:** 4-Line SPI
 - **Pins:** CS=15, DC=2, MOSI=13, MISO=12, SCK=14, BL=21
 
@@ -103,7 +103,7 @@ Tests: Display colors, RGB LED, touch IRQ, SD pins, backlight.
 ## 🚨 Common Issues & Fixes
 
 ### 1. **Purple Boot Screen → White Screen Crash**
-**Cause:** No SD card installed (SD.begin() was blocking/crashing)  
+**Cause:** No SD card installed (SD.begin() was blocking/crashing)
 **Fix:** Pull latest code - SD card is now optional!
 ```bash
 git pull origin main
@@ -114,7 +114,7 @@ See: [NO_SD_CARD_FIX.md](NO_SD_CARD_FIX.md)
 ---
 
 ### 2. **Display Shows Wrong Colors**
-**Cause:** Color inversion mismatch  
+**Cause:** Color inversion mismatch
 **Fix:** Try the inverted version
 ```bash
 pio run -e ESP32-32E-INV -t upload
@@ -123,7 +123,7 @@ pio run -e ESP32-32E-INV -t upload
 ---
 
 ### 3. **Touch Screen Not Working**
-**Cause:** Needs calibration on first boot  
+**Cause:** Needs calibration on first boot
 **Fix:** Tap firmly on the screen during boot - calibration should start automatically. If not:
 ```bash
 # Erase flash to reset calibration
@@ -135,7 +135,7 @@ pio run -e ESP32-32E -t upload
 ---
 
 ### 4. **Screen Stays Black**
-**Cause:** Backlight not initializing  
+**Cause:** Backlight not initializing
 **Fix:** Already fixed in latest code - backlight controlled via direct GPIO before LEDC
 ```bash
 git pull origin main
@@ -145,7 +145,7 @@ pio run -e ESP32-32E -t upload
 ---
 
 ### 5. **Long Path Errors During Build**
-**Cause:** Windows 260-character path limit  
+**Cause:** Windows 260-character path limit
 **Fix:** Enable long paths (run PowerShell as Administrator)
 ```powershell
 New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
