@@ -20,4 +20,5 @@ Base: current upstream `BruceDevices/firmware` (`a59213f3`) + ported `boards/ESP
 - No partition change was needed (`custom_4Mb_full.csv` app = 0x3C0000; ~9% free), so the planned `custom_4Mb_maxapp.csv` contingency was not created.
 - Board files adapted to Arduino-ESP32 core 3.x: LEDC keyed by pin, `bruceConfigPins.rotation`; battery macro corrected to `-DANALOG_BAT_PIN=34` (old `-DBAT_PIN` is dead upstream).
 - IR defaults: `-DTXLED=4` (upstream would fall back to `GROVE_SDA=27`, colliding with CC1101 SS) and `-DRXLED=35` (input-only, receiver-capable); the `*_TX_PINS` option lists now exclude input-only GPIO35. IR remains **unverified** against hardware.
-- Color inversion is now selected by build env: `ESP32-32E` (OFF) vs `ESP32-32E-INV` (`-DTFT_INVERSION_ON`).
+- Color inversion is selected by build env: `ESP32-32E`/`-INV` (ILI9341 panel) and `ESP32-32E-7789` (ST7789 panel, `-DTFT_INVERSION_ON`).
+- Panel confirmed on hardware (2026-10-08): this unit is **ST7789**; the `ESP32-32E-7789` build (with `-DTFT_INVERSION_ON`) gives a correct, upright, non-inverted image.
