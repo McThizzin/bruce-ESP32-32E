@@ -13,10 +13,10 @@
 
 ### Display panel variants (same pinout, different controller)
 This board family shipped with two 240×320 panels behind identical wiring:
-- **ILI9341** — default; build `-e ESP32-32E` (or `-INV`, `-RESISTIVE`, `LAUNCHER_ESP32-32E`).
-- **ST7789** — some 2.4"/2.8" units; build `-e ESP32-32E-7789` (verified: needs `-DTFT_INVERSION_ON` and `-DTFT_RGB_ORDER=TFT_BGR`).
+- **ST7789** — default; build `-e ESP32-32E-7789` (verified: needs `-DTFT_INVERSION_ON` and `-DTFT_RGB_ORDER=TFT_BGR`).
+- **ILI9341** — build `-e ESP32-32E` (or `-INV`, `-RESISTIVE`, `LAUNCHER_ESP32-32E`).
 
-Not sure which you have? Flash the ST7789 env: if the image is correct, your panel is ST7789.
+Not sure which you have? Flash the default ST7789 build: if the image is correct, your panel is ST7789; otherwise use the ILI9341 env.
 
 ### Pin Quick Reference Table
 
