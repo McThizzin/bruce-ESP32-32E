@@ -128,14 +128,14 @@ constexpr size_t MAX_BEACON_CACHE = 64;
 constexpr size_t EAPOL_MAP_MAX = 64;
 constexpr size_t PERAP_HS_MAP_MAX = 128;
 constexpr size_t HS_SET_MAX = 128;
-constexpr size_t BEACON_MAP_MAX = 128;
 #else
 constexpr size_t MAX_BEACON_CACHE = 24;
 constexpr size_t EAPOL_MAP_MAX = 16;
 constexpr size_t PERAP_HS_MAP_MAX = 32;
 constexpr size_t HS_SET_MAX = 32;
-constexpr size_t BEACON_MAP_MAX = 32;
 #endif
+// Shared with pwngrid.cpp (see wifi_memory.h) so the global has one bound.
+constexpr size_t BEACON_MAP_MAX = WIFI_BEACON_MAP_MAX;
 struct BeaconFrame {
     uint8_t data[BEACON_BUF_SIZE] = {0};
     uint16_t len = 0;
@@ -608,8 +608,7 @@ static void registerBeacon(const uint8_t *apAddr) {
     BeaconList beacon;
     memcpy(beacon.MAC, apAddr, sizeof(beacon.MAC));
     beacon.channel = all_wifi_channels[ch];
-    registeredBeacons.insert(beacon);
-    capContainer(registeredBeacons, BEACON_MAP_MAX);
+    if (registeredBeacons.size() < BEACON_MAP_MAX) registeredBeacons.insert(beacon);
 }
 
 static void cacheBeaconFrame(uint64_t apKey, const wifi_promiscuous_pkt_t *packet) {
@@ -623,7 +622,6 @@ static void cacheBeaconFrame(uint64_t apKey, const wifi_promiscuous_pkt_t *packe
     frame.len = len;
     frame.timestamp_sec = packet->rx_ctrl.timestamp / 1000000;
     frame.timestamp_usec = packet->rx_ctrl.timestamp % 1000000;
-    capContainer(beaconRawCache, MAX_BEACON_CACHE);
 }
 
 static String resolveSsidForFrame(FrameInfo &info, const wifi_promiscuous_pkt_t *packet) {
@@ -631,8 +629,9 @@ static String resolveSsidForFrame(FrameInfo &info, const wifi_promiscuous_pkt_t 
     if (info.isBeacon) {
         beacon_frames++;
         String ssid = extractSsid(packet);
-        beaconSsidCache[info.apKey] = ssid;
-        capContainer(beaconSsidCache, BEACON_MAP_MAX);
+        if (beaconSsidCache.size() < BEACON_MAP_MAX || beaconSsidCache.count(info.apKey)) {
+            beaconSsidCache[info.apKey] = ssid;
+        }
         cacheBeaconFrame(info.apKey, packet);
         return ssid;
     }
@@ -680,8 +679,9 @@ static FrameInfo analyzeFrame(wifi_promiscuous_pkt_t *pkt) {
     if (info.isBeacon) {
         registerBeacon(info.apAddr);
         // UPDATE last-seen timestamp for this beacon
-        beaconLastSeen[info.apKey] = (uint32_t)millis();
-        capContainer(beaconLastSeen, BEACON_MAP_MAX);
+        if (beaconLastSeen.size() < BEACON_MAP_MAX || beaconLastSeen.count(info.apKey)) {
+            beaconLastSeen[info.apKey] = (uint32_t)millis();
+        }
     }
 
     return info;

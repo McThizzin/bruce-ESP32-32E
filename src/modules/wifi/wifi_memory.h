@@ -11,6 +11,15 @@ static constexpr size_t WIFI_LOW_HEAP_BYTES = 8 * 1024;
 static constexpr size_t WIFI_LOW_HEAP_BYTES = 24 * 1024;
 #endif
 
+// Single shared bound for the `registeredBeacons` set (and the beacon caches
+// that share its size). Defined here so sniffer.cpp and pwngrid.cpp agree on
+// one value instead of hard-coding separate caps against the same global.
+#if defined(BOARD_HAS_PSRAM)
+static constexpr size_t WIFI_BEACON_MAP_MAX = 128;
+#else
+static constexpr size_t WIFI_BEACON_MAP_MAX = 32;
+#endif
+
 static inline bool wifiLowMemory() {
     return heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < WIFI_LOW_HEAP_BYTES;
 }

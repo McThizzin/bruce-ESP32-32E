@@ -231,6 +231,7 @@ void getMAC(char *addr, uint8_t *data, uint16_t offset) {
 
 void pwnSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
     if (wifiLowMemory()) return; // skip capture rather than risk a failed allocation
+    try {
     sniffer(buf, type);
     wifi_promiscuous_pkt_t *snifferPacket = (wifi_promiscuous_pkt_t *)buf;
     WifiMgmtHdr *frameControl = (WifiMgmtHdr *)snifferPacket->payload;
@@ -254,11 +255,8 @@ void pwnSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
         BeaconList Beacon;
         memcpy(Beacon.MAC, apAddr, 6);
         Beacon.channel = ch;
-        if (registeredBeacons.find(Beacon) == registeredBeacons.end()) {
-            try {
-                registeredBeacons.insert(Beacon); // Save a new MAC to Deauth
-                capContainer(registeredBeacons, 64);
-            } catch (const std::bad_alloc &) { return; }
+        if (registeredBeacons.find(Beacon) == registeredBeacons.end() && registeredBeacons.size() < WIFI_BEACON_MAP_MAX) {
+            registeredBeacons.insert(Beacon); // Save a new MAC to Deauth
         }
     }
 
@@ -307,6 +305,7 @@ void pwnSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
             }
         }
     }
+    } catch (const std::bad_alloc &) { return; }
 }
 
 const wifi_promiscuous_filter_t filter = {
