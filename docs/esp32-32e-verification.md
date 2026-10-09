@@ -27,32 +27,40 @@ Base: current upstream `BruceDevices/firmware` (`a59213f3`) + ported `boards/ESP
 
 Date: 2026-10-08
 Branch: `fix/esp32-32e-nopsram`
-Stability commits: `7d7ba244` (helpers), `a199cf8d` (karma), `fb2a976d` (sniffer), `c415f28f` (deauther/pwngotchi)
-Change: `src/modules/wifi/wifi_memory.h` low-heap tripwire (`wifiLowMemory()`) + `capContainer()`;
-NULL-`c_str()`/`std::bad_alloc` guards in `probe_sniffer`/`addMACToCache`, `sniffer`/`analyzeFrame`,
-`clientSnifferCallback`, `pwnSnifferCallback`; hard caps on the sniffer/karma containers and
+Stability commits: `7d7ba244` (helpers), `a199cf8d` (karma), `fb2a976d` (sniffer), `c415f28f` (deauther/pwngotchi), `8995e3a5` (review fixes)
+Change: `src/modules/wifi/wifi_memory.h` low-heap tripwire (`wifiLowMemory()`) + `capContainer()`
++ board-conditional `WIFI_BEACON_MAP_MAX`; NULL-`c_str()`/`std::bad_alloc` guards in
+`probe_sniffer`/`addMACToCache`, `sniffer`/`analyzeFrame`, `clientSnifferCallback`, and
+`pwnSnifferCallback` (whole callback wrapped); insert-time size bounds on the sniffer caches
+(`registeredBeacons`/`beaconSsidCache`/`beaconLastSeen`) plus the sniffer/karma containers;
 no-PSRAM size reductions (`MAX_PROBE_BUFFER` 200→60, `MAC_CACHE_SIZE` 100→48,
 `MAX_BEACON_CACHE` 64→24, plus the caps in the spec table). PSRAM boards keep the original
 size constants.
+
+Whole-branch review: round 1 returned "With fixes" (uncaught `bad_alloc` in `pwnSnifferCallback`;
+two caps on the shared `registeredBeacons`; callback-side `erase` racing the sniffer main-loop
+iterators). All Critical/Important findings fixed in `8995e3a5` and re-reviewed → "Ready to merge: Yes".
 
 ### Build matrix (compiled, 2026-10-08)
 
 | Env | Result | App size (`firmware.bin`) |
 |---|---|---|
-| `ESP32-32E-7789` | **SUCCESS** | 3,581,472 B |
-| `ESP32-32E` | **SUCCESS** | 3,581,392 B |
-| `ESP32-32E-INV` | **SUCCESS** | 3,581,504 B |
+| `ESP32-32E-7789` | **SUCCESS** | 3,581,376 B |
+| `ESP32-32E` | **SUCCESS** | 3,581,264 B |
+| `ESP32-32E-INV` | **SUCCESS** | 3,581,376 B |
 
 All app sizes < `0x3C0000` = 3,932,160 B slot (≈8.9% free). Flashable image produced:
-`Bruce-ESP32-32E-7789.bin` (merged, 3,647,008 B, SHA256 `6569e201db9dee14be8fafeded978570e0a9846f0584c979dd0032cf4433e18a`).
+`Bruce-ESP32-32E-7789.bin` (merged, 3,646,912 B, SHA256 `8d0c685a672fcf9d78f69e6504cbaff0ad9db4edc513fb0729f7f554e28a5569`).
 
 PSRAM branch: `m5stack-sticks3` — and every other PSRAM env in-tree (`elecrow-advance-35-s3`,
 `esp32-s3-devkitc-1-psram`, `lilygo-t-display-S3-pro`, `esp32-c5-tft`, `nm-cyd-c5`) — currently
 fails to compile for an unrelated reason: `-DFP=1` collides with FastLED 3.10.6's
 `template <typename FP>` in `fl/stl/json.h`. `ESP32-32E.ini:124` already comments out `-DFP=1`
-for exactly this collision. To prove the `BOARD_HAS_PSRAM` branch of the changed files, `sniffer.cpp`
-and `karma_attack.cpp` were compiled against the `ESP32-32E` flags with `-DBOARD_HAS_PSRAM`
-added (`-fsyntax-only`); both exited 0.
+for exactly this collision. To prove the `BOARD_HAS_PSRAM` branch of the changed files,
+`sniffer.cpp`, `karma_attack.cpp`, and `pwngrid.cpp` were compiled against the `ESP32-32E` flags
+with `-DBOARD_HAS_PSRAM` added (`-fsyntax-only`); all exited 0.
+
+Note: `m5stack-cardputer` is an ESP32-S3FN8 (no PSRAM) and correctly takes the no-PSRAM branch.
 
 ### On-device verification — PENDING (user)
 
