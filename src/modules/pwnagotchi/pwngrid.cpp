@@ -11,8 +11,10 @@ Thanks to @bmorcelli (Pirata) for his help doing a better code.
 #if !defined(LITE_VERSION)
 #include "pwngrid.h"
 #include "../wifi/sniffer.h"
+#include "../wifi/wifi_memory.h"
 #include "core/wifi/wifi_common.h"
 #include <algorithm>
+#include <new>
 
 uint8_t pwngrid_friends_tot = 0;
 std::vector<pwngrid_peer> pwngrid_peers;
@@ -228,6 +230,7 @@ void getMAC(char *addr, uint8_t *data, uint16_t offset) {
 }
 
 void pwnSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
+    if (wifiLowMemory()) return; // skip capture rather than risk a failed allocation
     sniffer(buf, type);
     wifi_promiscuous_pkt_t *snifferPacket = (wifi_promiscuous_pkt_t *)buf;
     WifiMgmtHdr *frameControl = (WifiMgmtHdr *)snifferPacket->payload;
@@ -252,7 +255,10 @@ void pwnSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
         memcpy(Beacon.MAC, apAddr, 6);
         Beacon.channel = ch;
         if (registeredBeacons.find(Beacon) == registeredBeacons.end()) {
-            registeredBeacons.insert(Beacon); // Save a new MAC to Deauth
+            try {
+                registeredBeacons.insert(Beacon); // Save a new MAC to Deauth
+                capContainer(registeredBeacons, 64);
+            } catch (const std::bad_alloc &) { return; }
         }
     }
 

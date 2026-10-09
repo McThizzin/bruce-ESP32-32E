@@ -7,6 +7,7 @@
 #include "core/wifi/webInterface.h"
 #include "core/wifi/wifi_common.h"
 #include "modules/wifi/sniffer.h"
+#include "modules/wifi/wifi_memory.h"
 #include "scan_hosts.h"
 #include "wifi_atks.h"
 #include <esp_wifi.h>
@@ -27,6 +28,7 @@
 #include <lwip/sockets.h>
 #include <lwip/sys.h>
 #include <lwip/timeouts.h>
+#include <new>
 #include <sstream>
 
 struct wifi_header_t {
@@ -1042,6 +1044,7 @@ void showAPSelectionForClientDeauth() {
 
 void clientSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
     if (!clientScanActive) return;
+    if (wifiLowMemory()) return; // skip capture rather than risk a failed allocation
 
     wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
     wifi_header_t *header = (wifi_header_t *)pkt->payload;
@@ -1063,6 +1066,7 @@ void clientSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
                 }
             }
             if (!exists) {
+                try {
                 ip4_addr_t ip;
                 ip.addr = 0;
                 eth_addr eth;
@@ -1073,6 +1077,8 @@ void clientSnifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
 
                 Host client(&ip, &eth, "", vendor, rssi);
                 detectedClients.push_back(client);
+                capContainer(detectedClients, 64);
+                } catch (const std::bad_alloc &) { return; }
             }
         }
     }
