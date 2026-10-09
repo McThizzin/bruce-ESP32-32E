@@ -272,7 +272,10 @@ void EvilPortal::restartWiFi(bool reset) {
     dnsServer->stop();
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    _captiveHandler = nullptr;
+    if (_captiveHandler) {
+        delete _captiveHandler;
+        _captiveHandler = nullptr;
+    }
 
     wifiDisconnect();
     WiFi.softAP(apName, emptyString, _channel);
@@ -352,6 +355,11 @@ void EvilPortal::loop() {
 
                 dnsServer->stop();
                 vTaskDelay(100 / portTICK_PERIOD_MS);
+
+                if (_captiveHandler) {
+                    delete _captiveHandler;
+                    _captiveHandler = nullptr;
+                }
 
                 WiFi.mode(_originalWifiMode);
                 vTaskDelay(100 / portTICK_PERIOD_MS);
