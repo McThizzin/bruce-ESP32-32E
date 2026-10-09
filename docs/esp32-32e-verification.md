@@ -72,3 +72,11 @@ Not yet run: requires an ESP32-32E (ESP32-WROOM-32E, no PSRAM) unit. Flash
 
 Success = no `xRingbufferSend` assert and no `abort()` backtrace; under low internal heap the
 features may drop packets but the board keeps running. Record the result (and serial evidence) here.
+
+### 2026-10-08 — Evil Portal crash
+- Observed: `abort()` at `__cxxabiv1::__terminate` / `operator new` (`AsyncTCP_detail::tcp_accept`) after Evil Portal restarted; no crash in Sniffer/Karma/Deauther scan.
+- Root cause: `CaptiveRequestHandler` allocated with `new` was set to `nullptr` on `restartWiFi()` and on exit without `delete` (leak) → heap fragmentation eventually caused AsyncTCP allocation to throw `std::bad_alloc`.
+- Fix: delete `_captiveHandler` before nulling/recreating and in teardown (`src/modules/wifi/evil_portal.cpp`).
+- Build: `ESP32-32E-7789` rebuilt (commit `70886d9c`) — `Bruce-ESP32-32E-7789.bin` updated (SHA256 5690f27bef7fcf9ec85f40ca7dcdb3caf7f084ceb78684e2d854de062fc6033c).
+- User verification (this session): ran Sniffer (~2 min), Karma (~2 min), Deauther client scan — no crash. Evil Portal worked on retry (single earlier abort before fix; after flashing this build, user will re-test).
+
