@@ -16,6 +16,7 @@
 #include "lwip/err.h"
 #include "modules/wifi/evil_portal.h"
 #include "modules/wifi/sniffer.h"
+#include "modules/wifi/wifi_memory.h"
 #include <Arduino.h>
 #include <TimeLib.h>
 #include <algorithm>
@@ -104,8 +105,16 @@ const uint8_t karma_channels[] PROGMEM = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 
 #define FILENAME "probe_capture_"
 #define SAVE_INTERVAL 10
+#if defined(BOARD_HAS_PSRAM)
 #define MAX_PROBE_BUFFER 200
+#else
+#define MAX_PROBE_BUFFER 60
+#endif
+#if defined(BOARD_HAS_PSRAM)
 #define MAC_CACHE_SIZE 100
+#else
+#define MAC_CACHE_SIZE 48
+#endif
 #define MAX_CLIENT_TRACK 30
 #define FAST_HOP_INTERVAL 500
 #define DEFAULT_HOP_INTERVAL 2000
@@ -876,12 +885,14 @@ bool isMACInCache(const String &mac) {
 
 void addMACToCache(const String &mac) {
     if (!macRingBuffer) return;
+    const char *cstr = mac.c_str();
+    if (cstr == nullptr || mac.length() == 0) return; // failed String allocation, or empty
     if (xRingbufferGetCurFreeSize(macRingBuffer) < mac.length() + 1) {
         size_t itemSize;
         char *oldItem = (char *)xRingbufferReceive(macRingBuffer, &itemSize, 0);
         if (oldItem) vRingbufferReturnItem(macRingBuffer, oldItem);
     }
-    xRingbufferSend(macRingBuffer, mac.c_str(), mac.length() + 1, pdMS_TO_TICKS(100));
+    xRingbufferSend(macRingBuffer, cstr, mac.length() + 1, pdMS_TO_TICKS(100));
 }
 
 uint32_t generateClientFingerprint(const uint8_t *frame, int len) {
@@ -2266,12 +2277,14 @@ void probe_sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
     if (type != WIFI_PKT_MGMT) return;
     if (karmaPaused) return;
     if (!storageAvailable) return;
+    if (wifiLowMemory()) return; // skip capture rather than risk a failed allocation
 
     wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
     wifi_pkt_rx_ctrl_t ctrl = (wifi_pkt_rx_ctrl_t)pkt->rx_ctrl;
     const uint8_t *frame = pkt->payload;
     uint8_t frameSubType = (frame[0] & 0xF0) >> 4;
 
+    try {
     if (frameSubType == 0x00 && karmaConfig.enableDeauth) {
         String clientMAC = extractMAC(pkt);
         sendDeauth(clientMAC, pgm_read_byte(&karma_channels[channl % 14]), false);
@@ -2289,7 +2302,7 @@ void probe_sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
         memcpy(hs.eapolFrame, pkt->payload, hs.frameLen);
         hs.complete = (classifyEAPOLMessage(pkt) == 4);
         handshakeBuffer.push_back(hs);
-        if (handshakeBuffer.size() > 20) handshakeBuffer.erase(handshakeBuffer.begin());
+        capContainer(handshakeBuffer, 20); // existing behaviour is already capped at 20
         if (hs.complete) saveHandshakeToFile(hs);
     }
 
@@ -2346,6 +2359,9 @@ void probe_sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
         event.fingerprint = probe.fingerprint;
         event.rsn = rsn;
         xQueueSend(karmaQueue, &event, 0);
+    }
+    } catch (const std::bad_alloc &) {
+        return;
     }
 }
 
