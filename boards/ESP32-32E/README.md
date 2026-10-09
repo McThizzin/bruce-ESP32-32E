@@ -11,6 +11,13 @@
 - **E32R28T**: With resistive touchscreen
 - **E32N28T**: Without touchscreen
 
+### Display panel variants (same pinout, different controller)
+This board family shipped with two 240×320 panels behind identical wiring:
+- **ST7789** — default; build `-e ESP32-32E-7789` (verified: needs `-DTFT_INVERSION_ON` and `-DTFT_RGB_ORDER=TFT_BGR`).
+- **ILI9341** — build `-e ESP32-32E` (or `-INV`, `-RESISTIVE`, `LAUNCHER_ESP32-32E`).
+
+Not sure which you have? Flash the default ST7789 build: if the image is correct, your panel is ST7789; otherwise use the ILI9341 env.
+
 ### Pin Quick Reference Table
 
 | Function | GPIO | Notes |
