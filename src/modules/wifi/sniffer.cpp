@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <ctype.h>
 #include <map>
+#include <new>
 #include <set>
 #include <vector>
 
@@ -42,6 +43,7 @@
 #include <SdFat.h>
 #endif
 #include "modules/wifi/wifi_atks.h" // to use deauth frames and cmds
+#include "modules/wifi/wifi_memory.h"
 
 //===== SETTINGS =====//
 #define FILENAME "raw_"
@@ -121,7 +123,19 @@ constexpr size_t BEACON_BUF_SIZE = 512;
 // bounds the cache to ~36 KB even in very dense environments (hundreds of
 // networks). Stale entries are also pruned by time in cleanupStaleBeacons();
 // this cap only guards against bursts of many simultaneously-active APs.
+#if defined(BOARD_HAS_PSRAM)
 constexpr size_t MAX_BEACON_CACHE = 64;
+constexpr size_t EAPOL_MAP_MAX = 64;
+constexpr size_t PERAP_HS_MAP_MAX = 128;
+constexpr size_t HS_SET_MAX = 128;
+constexpr size_t BEACON_MAP_MAX = 128;
+#else
+constexpr size_t MAX_BEACON_CACHE = 24;
+constexpr size_t EAPOL_MAP_MAX = 16;
+constexpr size_t PERAP_HS_MAP_MAX = 32;
+constexpr size_t HS_SET_MAX = 32;
+constexpr size_t BEACON_MAP_MAX = 32;
+#endif
 struct BeaconFrame {
     uint8_t data[BEACON_BUF_SIZE] = {0};
     uint16_t len = 0;
@@ -338,6 +352,11 @@ void saveHandshake(const wifi_promiscuous_pkt_t *packet, bool beacon, FS &Fs, co
     int eapolMsg = classifyEapolMessage(packet);
     if (eapolMsg < 1 || eapolMsg > 4) { return; }
 
+    // Bound the per-AP maps before we take references into them: capping after
+    // operator[] could evict apKey itself and dangle tracker/buf.
+    capContainer(perApHandshakeTracker, PERAP_HS_MAP_MAX);
+    capContainer(eapol4WayBuffer, EAPOL_MAP_MAX);
+
     auto &tracker = perApHandshakeTracker[apKey];
     auto &buf = eapol4WayBuffer[apKey];
     uint16_t dataLen = std::min<uint16_t>(packet->rx_ctrl.sig_len, EAPOL_BUF_SIZE);
@@ -501,6 +520,7 @@ static bool hasCompleteHandshake(uint64_t apKey) {
 void markHandshakeReady(uint64_t key) {
     portENTER_CRITICAL(&handshakeReadyMux);
     handshakeReadyBssids.insert(key);
+    capContainer(handshakeReadyBssids, HS_SET_MAX);
     portEXIT_CRITICAL(&handshakeReadyMux);
 }
 
@@ -531,13 +551,16 @@ static bool handshakeRecordExists(const String &path) {
 static void registerHandshakeRecord(const String &path) {
     if (!handshakeMutex) {
         SavedHS.insert(path);
+        capContainer(SavedHS, HS_SET_MAX);
         return;
     }
     if (xSemaphoreTake(handshakeMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         SavedHS.insert(path);
+        capContainer(SavedHS, HS_SET_MAX);
         xSemaphoreGive(handshakeMutex);
     } else {
         SavedHS.insert(path);
+        capContainer(SavedHS, HS_SET_MAX);
     }
 }
 
@@ -554,13 +577,16 @@ static bool handshakeBeaconRecorded(uint64_t key) {
 static void registerHandshakeBeacon(uint64_t key) {
     if (!handshakeMutex) {
         handshakeBeaconLogged.insert(key);
+        capContainer(handshakeBeaconLogged, HS_SET_MAX);
         return;
     }
     if (xSemaphoreTake(handshakeMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         handshakeBeaconLogged.insert(key);
+        capContainer(handshakeBeaconLogged, HS_SET_MAX);
         xSemaphoreGive(handshakeMutex);
     } else {
         handshakeBeaconLogged.insert(key);
+        capContainer(handshakeBeaconLogged, HS_SET_MAX);
     }
 }
 
@@ -583,6 +609,7 @@ static void registerBeacon(const uint8_t *apAddr) {
     memcpy(beacon.MAC, apAddr, sizeof(beacon.MAC));
     beacon.channel = all_wifi_channels[ch];
     registeredBeacons.insert(beacon);
+    capContainer(registeredBeacons, BEACON_MAP_MAX);
 }
 
 static void cacheBeaconFrame(uint64_t apKey, const wifi_promiscuous_pkt_t *packet) {
@@ -596,6 +623,7 @@ static void cacheBeaconFrame(uint64_t apKey, const wifi_promiscuous_pkt_t *packe
     frame.len = len;
     frame.timestamp_sec = packet->rx_ctrl.timestamp / 1000000;
     frame.timestamp_usec = packet->rx_ctrl.timestamp % 1000000;
+    capContainer(beaconRawCache, MAX_BEACON_CACHE);
 }
 
 static String resolveSsidForFrame(FrameInfo &info, const wifi_promiscuous_pkt_t *packet) {
@@ -604,6 +632,7 @@ static String resolveSsidForFrame(FrameInfo &info, const wifi_promiscuous_pkt_t 
         beacon_frames++;
         String ssid = extractSsid(packet);
         beaconSsidCache[info.apKey] = ssid;
+        capContainer(beaconSsidCache, BEACON_MAP_MAX);
         cacheBeaconFrame(info.apKey, packet);
         return ssid;
     }
@@ -652,6 +681,7 @@ static FrameInfo analyzeFrame(wifi_promiscuous_pkt_t *pkt) {
         registerBeacon(info.apAddr);
         // UPDATE last-seen timestamp for this beacon
         beaconLastSeen[info.apKey] = (uint32_t)millis();
+        capContainer(beaconLastSeen, BEACON_MAP_MAX);
     }
 
     return info;
@@ -954,12 +984,19 @@ void sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
         return;
     }
 
+    if (wifiLowMemory()) return; // drop frames while heap is critically low
+
     wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
     wifi_pkt_rx_ctrl_t ctrl = pkt->rx_ctrl;
 
     packet_counter++;
 
-    FrameInfo frameInfo = analyzeFrame(pkt);
+    FrameInfo frameInfo;
+    try {
+        frameInfo = analyzeFrame(pkt);
+    } catch (const std::bad_alloc &) {
+        return;
+    }
     if (!frameInfo.valid) { return; }
     if (frameInfo.isEapol) { num_EAPOL++; }
 
